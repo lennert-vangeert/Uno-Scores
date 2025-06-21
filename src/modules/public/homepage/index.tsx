@@ -34,9 +34,10 @@ type User = {
 
 const STORAGE_KEY_USERS = "users";
 const STORAGE_KEY_NEXT_ID = "nextId";
+const SHOW_CARDS = localStorage.getItem("showCards") === "true"; // Toggle to show/hide cards
 
 const Homepage = () => {
-  const { mainMargin, gridCols } = useSelector((state: RootState) => state.ui);
+  const { mainMargin, gridCols, isTablet } = useSelector((state: RootState) => state.ui);
   const theme = useMantineTheme();
 
   // --- State with lazy localStorage init ---
@@ -61,6 +62,8 @@ const Homepage = () => {
       return 1;
     }
   });
+
+  const [showCards, setShowCards] = useState<boolean>(SHOW_CARDS);
 
   // --- Persist to localStorage ---
   useEffect(() => {
@@ -132,9 +135,14 @@ const Homepage = () => {
     <>
       <Head title="" description="This is the homepage" SEODisabled />
       <Box mt="5rem" mx={mainMargin}>
-        <Button onClick={() => setOpenedModal("addUser")}>
-          Voeg speler toe
-        </Button>
+        <Flex direction={isTablet ? "column" : "row"} gap="2rem" justify="space-between" align="center" mb="2rem">
+          <Button w={isTablet ? "100%" : "auto"} onClick={() => setOpenedModal("addUser")}>
+            Voeg speler toe
+          </Button>
+          <Button variant="outline" w={isTablet ? "100%" : "auto"} onClick={() => setShowCards((prev) => !prev)}>
+            {showCards ? "Verberg kaarten" : "Toon kaarten"}
+          </Button>
+        </Flex>
 
         {users.length > 0 ? (
           <Box mt="2rem" w="100%">
@@ -148,9 +156,11 @@ const Homepage = () => {
                   theme.colors.cards[i % theme.colors.cards.length];
                 return (
                   <MantineCard bg={bgColor} py="1rem" px="2rem" key={user.id}>
-                    <Box mb="2.5rem">
-                      <CardSVG style={{ width: "100%", height: "100%" }} />
-                    </Box>
+                    {showCards && (
+                      <Box mb="2.5rem">
+                        <CardSVG style={{ width: "100%", height: "100%" }} />
+                      </Box>
+                    )}
                     <Flex
                       c={decideTextColor(bgColor)}
                       justify="space-between"
