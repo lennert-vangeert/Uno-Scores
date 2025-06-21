@@ -3,7 +3,7 @@ import { RootState } from "@global/store/store";
 import {
   Box,
   Button,
-  Card,
+  Card as MantineCard,
   Center,
   Flex,
   Modal,
@@ -20,16 +20,26 @@ import { useSelector } from "react-redux";
 import { useForm } from "@mantine/form";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
 import { decideTextColor } from "@global/style/decideTextColor";
+//@ts-ignore
+import * as deck from "@letele/playing-cards";
 
-type User = { id: number; name: string; score: number };
+type CardKey = keyof typeof deck;
 
-const STORAGE_KEY_USERS = "myapp_users";
-const STORAGE_KEY_NEXT_ID = "myapp_nextId";
+type User = {
+  id: number;
+  name: string;
+  score: number;
+  card: CardKey;
+};
+
+const STORAGE_KEY_USERS = "users";
+const STORAGE_KEY_NEXT_ID = "nextId";
 
 const Homepage = () => {
   const { mainMargin, gridCols } = useSelector((state: RootState) => state.ui);
+  const theme = useMantineTheme();
 
-  // Lazy-init users from localStorage (client only)
+  // --- State with lazy localStorage init ---
   const [users, setUsers] = useState<User[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -41,7 +51,6 @@ const Homepage = () => {
     }
   });
 
-  // Lazy-init nextId from localStorage (client only)
   const [nextId, setNextId] = useState<number>(() => {
     if (typeof window === "undefined") return 1;
     try {
@@ -53,30 +62,22 @@ const Homepage = () => {
     }
   });
 
-  // Persist users
+  // --- Persist to localStorage ---
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
-    } catch {
-      console.warn("Failed to save users to localStorage");
-    }
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
   }, [users]);
 
-  // Persist nextId
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_NEXT_ID, String(nextId));
-    } catch {
-      console.warn("Failed to save nextId to localStorage");
-    }
+    localStorage.setItem(STORAGE_KEY_NEXT_ID, String(nextId));
   }, [nextId]);
 
-  // Modal & form state
+  // --- Modal & editing state ---
   const [openedModal, setOpenedModal] = useState<
     "addUser" | "changeScore" | null
   >(null);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
 
+  // --- Forms ---
   const addUserForm = useForm({
     mode: "uncontrolled",
     initialValues: { name: "" },
@@ -88,12 +89,24 @@ const Homepage = () => {
     initialValues: { score: 0 },
   });
 
+  // --- Helpers ---
+  const allCardKeys = Object.keys(deck).filter(
+    (k) => typeof deck[k as CardKey] === "function"
+  ) as CardKey[];
+
+  const getRandomCardKey = (): CardKey => {
+    const idx = Math.floor(Math.random() * allCardKeys.length);
+    return allCardKeys[idx];
+  };
+
+  // --- Open edit modal ---
   const openChangeScore = (user: User) => {
     setEditingUserId(user.id);
     changeScoreForm.setFieldValue("score", user.score);
     setOpenedModal("changeScore");
   };
 
+  // --- Save edited score ---
   const handleSaveScore = () => {
     if (editingUserId === null) return;
     setUsers((prev) =>
@@ -108,13 +121,13 @@ const Homepage = () => {
     setOpenedModal(null);
   };
 
+  // --- Discard edits ---
   const handleCloseChange = () => {
     changeScoreForm.reset();
     setEditingUserId(null);
     setOpenedModal(null);
   };
 
-  const theme = useMantineTheme();
   return (
     <>
       <Head title="" description="This is the homepage" SEODisabled />
@@ -123,50 +136,56 @@ const Homepage = () => {
           Voeg speler toe
         </Button>
 
-        {users.length > 0 && (
+        {users.length > 0 ? (
           <Box mt="2rem" w="100%">
-            <Title order={3} mb="2rem">Spelers</Title>
-            <SimpleGrid mx="auto" cols={gridCols}>
-              {users.map((user, i) => (
-                <Card
-                  bg={theme.colors.cards[i % theme.colors.cards.length]}
-                  py="1rem"
-                  px="2rem"
-                  key={user.id}
-                >
-                  <Flex
-                    c={decideTextColor(
-                      theme.colors.cards[i % theme.colors.cards.length]
-                    )}
-                    justify="space-between"
-                    align="center"
-                  >
-                    <Stack>
-                      <Text>Speler</Text>
-                      <Text>{user.name}</Text>
-                    </Stack>
-                    <Stack>
-                      <Text>score</Text>
-                      <Text>{user.score}</Text>
-                    </Stack>
-                    <Stack>
-                      <IconEdit
-                        style={{ cursor: "pointer" }}
-                        onClick={() => openChangeScore(user)}
-                      />
-                      <IconTrash
-                        style={{ cursor: "pointer" }}
-                        onClick={() =>
-                          setUsers((prev) =>
-                            prev.filter((u) => u.id !== user.id)
-                          )
-                        }
-                      />
-                    </Stack>
-                  </Flex>
-                </Card>
-              ))}
+            <Title order={3} mb="2rem">
+              Spelers
+            </Title>
+            <SimpleGrid cols={gridCols} mx="auto">
+              {users.map((user, i) => {
+                const CardSVG = deck[user.card];
+                const bgColor =
+                  theme.colors.cards[i % theme.colors.cards.length];
+                return (
+                  <MantineCard bg={bgColor} py="1rem" px="2rem" key={user.id}>
+                    <Box mb="2.5rem">
+                      <CardSVG style={{ width: "100%", height: "100%" }} />
+                    </Box>
+                    <Flex
+                      c={decideTextColor(bgColor)}
+                      justify="space-between"
+                      align="center"
+                    >
+                      <Stack>
+                        <Text size="sm">Speler</Text>
+                        <Text>{user.name}</Text>
+                      </Stack>
+
+                      <Stack>
+                        <Text size="sm">Score</Text>
+                        <Text>{user.score}</Text>
+                      </Stack>
+
+                      <Stack>
+                        <IconEdit
+                          style={{ cursor: "pointer" }}
+                          onClick={() => openChangeScore(user)}
+                        />
+                        <IconTrash
+                          style={{ cursor: "pointer" }}
+                          onClick={() =>
+                            setUsers((prev) =>
+                              prev.filter((u) => u.id !== user.id)
+                            )
+                          }
+                        />
+                      </Stack>
+                    </Flex>
+                  </MantineCard>
+                );
+              })}
             </SimpleGrid>
+
             <Center mt="5rem">
               <Button
                 onClick={() =>
@@ -177,10 +196,14 @@ const Homepage = () => {
               </Button>
             </Center>
           </Box>
+        ) : (
+          <Center mt="2rem">
+            <Text>Er zijn nog geen spelers toegevoegd.</Text>
+          </Center>
         )}
       </Box>
 
-      {/* Add User */}
+      {/* Add User Modal */}
       <Modal
         opened={openedModal === "addUser"}
         onClose={() => setOpenedModal(null)}
@@ -188,10 +211,13 @@ const Homepage = () => {
       >
         <form
           onSubmit={addUserForm.onSubmit((values) => {
-            setUsers((prev) => [
-              ...prev,
-              { id: nextId, name: values.name, score: 0 },
-            ]);
+            const newUser: User = {
+              id: nextId,
+              name: values.name,
+              score: 0,
+              card: getRandomCardKey(),
+            };
+            setUsers((prev) => [...prev, newUser]);
             setNextId((i) => i + 1);
             addUserForm.reset();
             setOpenedModal(null);
@@ -209,7 +235,7 @@ const Homepage = () => {
         </form>
       </Modal>
 
-      {/* Change Score */}
+      {/* Change Score Modal */}
       <Modal
         opened={openedModal === "changeScore"}
         onClose={handleCloseChange}
