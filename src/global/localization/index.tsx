@@ -11,11 +11,10 @@ import LanguageDetector from "i18next-browser-languagedetector";
 import { Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 
 // Import your translation files and assets
-import en from "./_en.json";
 import nl from "./_nl.json";
 
 // Define supported locales and their types
-export type Locale = "en" | "nl";
+export type Locale = "nl" | "nl";
 
 export type LocaleInfo = {
   id: Locale;
@@ -24,7 +23,7 @@ export type LocaleInfo = {
 };
 
 export const locales: LocaleInfo[] = [
-  { id: "en", label: "English", translations: en },
+  { id: "nl", label: "Nederlands", translations: nl },
   { id: "nl", label: "Nederlands", translations: nl },
 ];
 

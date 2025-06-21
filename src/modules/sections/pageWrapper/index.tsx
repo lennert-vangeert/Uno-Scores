@@ -1,10 +1,9 @@
 import { AppShell, Box, useMantineTheme } from "@mantine/core";
-import { useDisclosure, useMediaQuery } from "@mantine/hooks";
+import { useMediaQuery } from "@mantine/hooks";
 import { ReactNode, useEffect, useMemo, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 
 import Footer from "../footer";
-import Header from "../header";
 
 // Redux
 import ScrollToTop from "@common/scrollToTop";
@@ -19,7 +18,6 @@ import {
   setMainMargin,
 } from "@global/store/uiSlice";
 import { useDispatch } from "react-redux";
-import CookieBanner from "@common/cookieBanner";
 
 type PageWrapperProps = {
   /** Children to be rendered inside the PageWrapper */
@@ -46,9 +44,6 @@ const PageWrapper = ({ children }: PageWrapperProps) => {
   const isTablet = useMediaQuery(`(max-width: ${theme.breakpoints.lg})`);
   const isBigTablet = useMediaQuery(`(max-width: ${theme.breakpoints.xl})`);
 
-  const [opened, { close }] = useDisclosure(
-    document.cookie.indexOf("ANALYTICAL_COOKIES_ENABLED") === -1
-  );
 
   const margin = useMemo(() => {
     if (isMobile) return "1rem";
@@ -91,13 +86,11 @@ const PageWrapper = ({ children }: PageWrapperProps) => {
     <>
       <ScrollToTop />
       <AppShell>
-        <Header />
-        <Box>
+        <Box mih="80vh">
           {/* Render direct children if provided, otherwise fallback to nested routes */}
           {children ?? <Outlet />}
         </Box>
         <Footer />
-        <CookieBanner opened={opened} close={close} />
       </AppShell>
     </>
   );

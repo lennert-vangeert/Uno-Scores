@@ -11,6 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@letele/playing-cards": "^0.1.0",
+    "@mantine/carousel": "^8.0.1",
     "@mantine/core": "^8.0.1",
     "@mantine/dates": "^8.0.1",
     "@mantine/form": "^8.0.1",
@@ -18,7 +20,6 @@
     "@mantine/modals": "^8.0.1",
     "@mantine/notifications": "^8.0.1",
     "@mantine/spotlight": "^8.0.1",
-    "@mantine/carousel": "^8.0.1",
     "@reduxjs/toolkit": "^2.8.2",
     "@svgr/core": "^8.1.0",
     "@svgr/plugin-jsx": "^8.1.0",
