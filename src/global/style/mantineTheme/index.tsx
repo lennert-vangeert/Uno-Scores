@@ -278,25 +278,8 @@ const theme: MantineThemeOverride = {
     },
     Notification: {
       styles: {
-        root: {
-          borderRadius: "20px",
-          backgroundColor: colors.default.beige,
-          position: "relative",
-          overflow: "visible",
-          zIndex: 900,
-        },
         icon: {
-          position: "absolute",
-          width: "10rem",
-          top: "-25px",
-          left: "-20%",
           background: "transparent",
-        },
-        title: {
-          marginLeft: "5rem",
-        },
-        description: {
-          marginLeft: "5rem",
         },
       },
     },

@@ -19,10 +19,11 @@ import {
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useForm } from "@mantine/form";
-import { IconEdit, IconTrash } from "@tabler/icons-react";
+import { IconCheck, IconEdit, IconTrash } from "@tabler/icons-react";
 import { decideTextColor } from "@global/style/decideTextColor";
 // @ts-ignore
 import * as deck from "@letele/playing-cards";
+import { notifications } from "@mantine/notifications";
 
 type CardKey = keyof typeof deck;
 
@@ -53,6 +54,8 @@ const Homepage = () => {
       return [];
     }
   });
+
+  let oldScores: User[] | undefined = undefined;
 
   const [nextId, setNextId] = useState<number>(() => {
     if (typeof window === "undefined") return 1;
@@ -135,6 +138,36 @@ const Homepage = () => {
     setOpenedModal(null);
   };
 
+  const handleUndoReset = () => {
+    if (!oldScores) return;
+    setUsers(oldScores);
+    notifications.clean();
+    notifications.show({
+      title: "Reset ongedaan gemaakt",
+      message: "De scores zijn teruggezet.",
+      color: "blue",
+      autoClose: 5000,
+      icon: <IconCheck color="blue" />,
+    });
+  };
+  const resetScores = () => {
+    oldScores = users;
+    setUsers((prev) => prev.map((u) => ({ ...u, score: 0 })));
+    notifications.show({
+      title: "Scores gereset",
+      message: (
+        <Box>
+          <Button variant="outline" onClick={handleUndoReset}>
+            Ongedaan maken
+          </Button>
+        </Box>
+      ),
+      color: "red",
+      autoClose: 5000,
+      icon: <IconTrash color="black" />,
+    });
+  };
+
   const editingUser = users.find((u) => u.id === editingUserId);
   const oldScore = editingUser?.score ?? 0;
   const newScorePreview = changeScoreForm.values.score + addAmount;
@@ -215,13 +248,7 @@ const Homepage = () => {
               })}
             </SimpleGrid>
             <Center mt="5rem">
-              <Button
-                onClick={() =>
-                  setUsers((prev) => prev.map((u) => ({ ...u, score: 0 })))
-                }
-              >
-                Reset scores
-              </Button>
+              <Button onClick={resetScores}>Reset scores</Button>
             </Center>
           </Box>
         ) : (
@@ -267,10 +294,10 @@ const Homepage = () => {
       <Modal
         opened={openedModal === "changeScore"}
         onClose={handleCloseChange}
-        title="Verander score"
+        title={`Pas score aan voor ${editingUser?.name || ""}`}
       >
         <Center>
-          <Stack>
+          <Stack gap="0">
             <Text mb="1rem">Huidige score: {oldScore}</Text>
             <Text mb="1rem">Nieuwe score: {newScorePreview}</Text>
           </Stack>
@@ -315,7 +342,9 @@ const Homepage = () => {
         </Button>
         <Divider size={2} my="1rem" />
         <Flex mt="3rem" justify="space-between">
-          <Button w="100%" onClick={handleSaveScore}>Score aanpassen</Button>
+          <Button w="100%" onClick={handleSaveScore}>
+            Score aanpassen
+          </Button>
         </Flex>
       </Modal>
     </>
