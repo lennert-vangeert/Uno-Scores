@@ -14,13 +14,14 @@ import {
   TextInput,
   Title,
   useMantineTheme,
+  Divider,
 } from "@mantine/core";
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useForm } from "@mantine/form";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
 import { decideTextColor } from "@global/style/decideTextColor";
-//@ts-ignore
+// @ts-ignore
 import * as deck from "@letele/playing-cards";
 
 type CardKey = keyof typeof deck;
@@ -34,13 +35,14 @@ type User = {
 
 const STORAGE_KEY_USERS = "users";
 const STORAGE_KEY_NEXT_ID = "nextId";
-const SHOW_CARDS = localStorage.getItem("showCards") === "true"; // Toggle to show/hide cards
+const SHOW_CARDS = localStorage.getItem("showCards") === "true";
 
 const Homepage = () => {
-  const { mainMargin, gridCols, isTablet } = useSelector((state: RootState) => state.ui);
+  const { mainMargin, gridCols, isTablet } = useSelector(
+    (state: RootState) => state.ui
+  );
   const theme = useMantineTheme();
 
-  // --- State with lazy localStorage init ---
   const [users, setUsers] = useState<User[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -65,7 +67,6 @@ const Homepage = () => {
 
   const [showCards, setShowCards] = useState<boolean>(SHOW_CARDS);
 
-  // --- Persist to localStorage ---
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
   }, [users]);
@@ -74,13 +75,12 @@ const Homepage = () => {
     localStorage.setItem(STORAGE_KEY_NEXT_ID, String(nextId));
   }, [nextId]);
 
-  // --- Modal & editing state ---
   const [openedModal, setOpenedModal] = useState<
     "addUser" | "changeScore" | null
   >(null);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [addAmount, setAddAmount] = useState<number>(0);
 
-  // --- Forms ---
   const addUserForm = useForm({
     mode: "uncontrolled",
     initialValues: { name: "" },
@@ -92,7 +92,6 @@ const Homepage = () => {
     initialValues: { score: 0 },
   });
 
-  // --- Helpers ---
   const allCardKeys = Object.keys(deck).filter(
     (k) => typeof deck[k as CardKey] === "function"
   ) as CardKey[];
@@ -102,44 +101,66 @@ const Homepage = () => {
     return allCardKeys[idx];
   };
 
-  // --- Open edit modal ---
   const openChangeScore = (user: User) => {
     setEditingUserId(user.id);
     changeScoreForm.setFieldValue("score", user.score);
+    setAddAmount(0);
     setOpenedModal("changeScore");
   };
 
-  // --- Save edited score ---
+  const handleApplyAdd = () => {
+    const newScore = changeScoreForm.values.score + addAmount;
+    changeScoreForm.setFieldValue("score", newScore);
+    setAddAmount(0);
+  };
+
   const handleSaveScore = () => {
     if (editingUserId === null) return;
+    const finalScore = changeScoreForm.values.score + addAmount;
     setUsers((prev) =>
       prev.map((u) =>
-        u.id === editingUserId
-          ? { ...u, score: changeScoreForm.values.score }
-          : u
+        u.id === editingUserId ? { ...u, score: finalScore } : u
       )
     );
     changeScoreForm.reset();
+    setAddAmount(0);
     setEditingUserId(null);
     setOpenedModal(null);
   };
 
-  // --- Discard edits ---
   const handleCloseChange = () => {
     changeScoreForm.reset();
+    setAddAmount(0);
     setEditingUserId(null);
     setOpenedModal(null);
   };
+
+  const editingUser = users.find((u) => u.id === editingUserId);
+  const oldScore = editingUser?.score ?? 0;
+  const newScorePreview = changeScoreForm.values.score + addAmount;
 
   return (
     <>
       <Head title="" description="This is the homepage" SEODisabled />
       <Box mt="5rem" mx={mainMargin}>
-        <Flex direction={isTablet ? "column" : "row"} gap="2rem" justify="space-between" align="center" mb="2rem">
-          <Button w={isTablet ? "100%" : "auto"} onClick={() => setOpenedModal("addUser")}>
+        <Flex
+          direction={isTablet ? "column" : "row"}
+          gap="2rem"
+          justify="space-between"
+          align="center"
+          mb="2rem"
+        >
+          <Button
+            w={isTablet ? "100%" : "auto"}
+            onClick={() => setOpenedModal("addUser")}
+          >
             Voeg speler toe
           </Button>
-          <Button variant="outline" w={isTablet ? "100%" : "auto"} onClick={() => setShowCards((prev) => !prev)}>
+          <Button
+            variant="outline"
+            w={isTablet ? "100%" : "auto"}
+            onClick={() => setShowCards((prev) => !prev)}
+          >
             {showCards ? "Verberg kaarten" : "Toon kaarten"}
           </Button>
         </Flex>
@@ -170,12 +191,10 @@ const Homepage = () => {
                         <Text size="sm">Speler</Text>
                         <Text>{user.name}</Text>
                       </Stack>
-
                       <Stack>
                         <Text size="sm">Score</Text>
                         <Text>{user.score}</Text>
                       </Stack>
-
                       <Stack>
                         <IconEdit
                           style={{ cursor: "pointer" }}
@@ -195,7 +214,6 @@ const Homepage = () => {
                 );
               })}
             </SimpleGrid>
-
             <Center mt="5rem">
               <Button
                 onClick={() =>
@@ -252,8 +270,12 @@ const Homepage = () => {
         title="Verander score"
       >
         <Center>
-          <Text mb="1rem">Huidige score: {changeScoreForm.values.score}</Text>
+          <Stack>
+            <Text mb="1rem">Huidige score: {oldScore}</Text>
+            <Text mb="1rem">Nieuwe score: {newScorePreview}</Text>
+          </Stack>
         </Center>
+
         <Flex justify="center" gap="1rem" mb="1rem" wrap="wrap">
           {[1, 5, 10].map((inc) => (
             <Button
@@ -269,6 +291,7 @@ const Homepage = () => {
             </Button>
           ))}
         </Flex>
+
         <NumberInput
           label="Of voer een score in"
           placeholder="Voer score in"
@@ -278,9 +301,22 @@ const Homepage = () => {
           }
           mb="1rem"
         />
-        <Button onClick={handleSaveScore} mt="2rem" w="100%">
-          Klaar
+
+        <Divider size={2} my="1rem" />
+        <NumberInput
+          label="Bedrag toevoegen"
+          placeholder="Voer bedrag in"
+          value={addAmount}
+          onChange={(val) => setAddAmount(Number(val) || 0)}
+          mb="1rem"
+        />
+        <Button w="100%" variant="outline" onClick={handleApplyAdd}>
+          Voeg toe
         </Button>
+        <Divider size={2} my="1rem" />
+        <Flex mt="3rem" justify="space-between">
+          <Button w="100%" onClick={handleSaveScore}>Score aanpassen</Button>
+        </Flex>
       </Modal>
     </>
   );
