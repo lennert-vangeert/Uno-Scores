@@ -12,9 +12,10 @@ import { Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 
 // Import your translation files and assets
 import nl from "./_nl.json";
+import en from "./_en.json";
 
 // Define supported locales and their types
-export type Locale = "nl" | "nl";
+export type Locale = "nl" | "en";
 
 export type LocaleInfo = {
   id: Locale;
@@ -24,7 +25,7 @@ export type LocaleInfo = {
 
 export const locales: LocaleInfo[] = [
   { id: "nl", label: "Nederlands", translations: nl },
-  { id: "nl", label: "Nederlands", translations: nl },
+  { id: "en", label: "English", translations: en },
 ];
 
 // Set the default locale

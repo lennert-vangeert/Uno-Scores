@@ -15,45 +15,131 @@ import {
   Title,
   useMantineTheme,
   Divider,
+  Group,
 } from "@mantine/core";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import { useForm } from "@mantine/form";
-import { IconCheck, IconEdit, IconTrash } from "@tabler/icons-react";
+import {
+  IconCheck,
+  IconEdit,
+  IconMoon,
+  IconSun,
+  IconTrash,
+} from "@tabler/icons-react";
 import { decideTextColor } from "@global/style/decideTextColor";
 // @ts-ignore
-import * as deck from "@letele/playing-cards";
 import { notifications } from "@mantine/notifications";
-
-type CardKey = keyof typeof deck;
+import LanguageSelect from "@common/languageSelect";
+import { useTranslate } from "@global/localization";
 
 type User = {
   id: number;
   name: string;
   score: number;
-  card: CardKey;
 };
 
 const STORAGE_KEY_USERS = "users";
 const STORAGE_KEY_NEXT_ID = "nextId";
-const SHOW_CARDS = localStorage.getItem("showCards") === "true";
+const wakeSupported = "wakeLock" in navigator;
 
 const Homepage = () => {
   const { mainMargin, gridCols, isTablet } = useSelector(
     (state: RootState) => state.ui
   );
   const theme = useMantineTheme();
-
+  const { t } = useTranslate();
   const [users, setUsers] = useState<User[]>(() => {
     if (typeof window === "undefined") return [];
     try {
       const raw = localStorage.getItem(STORAGE_KEY_USERS);
       return raw ? (JSON.parse(raw) as User[]) : [];
     } catch {
-      console.warn("Could not parse users from localStorage");
       return [];
     }
   });
+
+  const initialWake =
+    typeof window !== "undefined" && localStorage.getItem("wake") === "true";
+  const [wake, setWake] = useState<boolean>(initialWake);
+  useEffect(() => {
+    localStorage.setItem("wake", String(wake));
+  }, [wake]);
+
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const releaseHandlerRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (!("wakeLock" in navigator)) {
+      return;
+    }
+
+    const acquire = async () => {
+      try {
+        const sentinel = await (navigator as any).wakeLock.request("screen");
+        wakeLockRef.current = sentinel;
+
+        // define handler once
+        const onRelease = () => {
+          // only re‑acquire on real visibility changes, not manual toggles
+          if (document.visibilityState === "visible" && wake) {
+            acquire();
+          }
+        };
+
+        // keep reference so we can detach it later
+        releaseHandlerRef.current = onRelease;
+        sentinel.addEventListener("release", onRelease);
+      } catch (err) {}
+    };
+
+    const release = async () => {
+      const sentinel = wakeLockRef.current;
+      if (!sentinel) return;
+      // remove listener so it won't fire us back
+      if (releaseHandlerRef.current) {
+        sentinel.removeEventListener("release", releaseHandlerRef.current);
+        releaseHandlerRef.current = null;
+      }
+      await sentinel.release();
+      wakeLockRef.current = null;
+    };
+
+    if (wake) {
+      acquire();
+    } else {
+      release();
+    }
+
+    return () => {
+      // on unmount, clean up
+      if (wakeLockRef.current) {
+        release();
+      }
+    };
+  }, [wake]);
+
+  // handle full-page visibility changes separately:
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (
+        wake &&
+        document.visibilityState === "visible" &&
+        !wakeLockRef.current
+      ) {
+        // only re‑acquire when truly needed
+        (navigator as any).wakeLock
+          .request("screen")
+          .then((sentinel: WakeLockSentinel) => {
+            wakeLockRef.current = sentinel;
+          });
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [wake]);
 
   let oldScores: User[] | undefined = undefined;
 
@@ -63,12 +149,9 @@ const Homepage = () => {
       const raw = localStorage.getItem(STORAGE_KEY_NEXT_ID);
       return raw ? parseInt(raw, 10) : 1;
     } catch {
-      console.warn("Could not parse nextId from localStorage");
       return 1;
     }
   });
-
-  const [showCards, setShowCards] = useState<boolean>(SHOW_CARDS);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
@@ -94,15 +177,6 @@ const Homepage = () => {
     mode: "uncontrolled",
     initialValues: { score: 0 },
   });
-
-  const allCardKeys = Object.keys(deck).filter(
-    (k) => typeof deck[k as CardKey] === "function"
-  ) as CardKey[];
-
-  const getRandomCardKey = (): CardKey => {
-    const idx = Math.floor(Math.random() * allCardKeys.length);
-    return allCardKeys[idx];
-  };
 
   const openChangeScore = (user: User) => {
     setEditingUserId(user.id);
@@ -143,8 +217,8 @@ const Homepage = () => {
     setUsers(oldScores);
     notifications.clean();
     notifications.show({
-      title: "Reset ongedaan gemaakt",
-      message: "De scores zijn teruggezet.",
+      title: t("Reset undone"),
+      message: t("The scores have been restored."),
       color: "blue",
       autoClose: 5000,
       icon: <IconCheck color="blue" />,
@@ -154,11 +228,11 @@ const Homepage = () => {
     oldScores = users;
     setUsers((prev) => prev.map((u) => ({ ...u, score: 0 })));
     notifications.show({
-      title: "Scores gereset",
+      title: t("Scores reset"),
       message: (
         <Box>
           <Button variant="outline" onClick={handleUndoReset}>
-            Ongedaan maken
+            {t("Undo")}
           </Button>
         </Box>
       ),
@@ -187,45 +261,44 @@ const Homepage = () => {
             w={isTablet ? "100%" : "auto"}
             onClick={() => setOpenedModal("addUser")}
           >
-            Voeg speler toe
+            {t("Add player")}
           </Button>
-          <Button
-            variant="outline"
-            w={isTablet ? "100%" : "auto"}
-            onClick={() => setShowCards((prev) => !prev)}
-          >
-            {showCards ? "Verberg kaarten" : "Toon kaarten"}
-          </Button>
+          <Group>
+            <LanguageSelect />
+            {!wakeSupported ? null : (
+              <Button
+                variant="outline"
+                w={isTablet ? "100%" : "auto"}
+                onClick={() => setWake((prev) => !prev)}
+              >
+                {wake ? <IconSun /> : <IconMoon />}
+              </Button>
+            )}
+          </Group>
         </Flex>
 
         {users.length > 0 ? (
           <Box mt="2rem" w="100%">
             <Title order={3} mb="2rem">
-              Spelers
+              {t("Players")}
             </Title>
             <SimpleGrid cols={gridCols} mx="auto">
               {users.map((user, i) => {
-                const CardSVG = deck[user.card];
                 const bgColor =
                   theme.colors.cards[i % theme.colors.cards.length];
                 return (
                   <MantineCard bg={bgColor} py="1rem" px="2rem" key={user.id}>
-                    {showCards && (
-                      <Box mb="2.5rem">
-                        <CardSVG style={{ width: "100%", height: "100%" }} />
-                      </Box>
-                    )}
                     <Flex
                       c={decideTextColor(bgColor)}
                       justify="space-between"
                       align="center"
                     >
                       <Stack>
-                        <Text size="sm">Speler</Text>
+                        <Text size="sm">{t("Player")}</Text>
                         <Text>{user.name}</Text>
                       </Stack>
                       <Stack>
-                        <Text size="sm">Score</Text>
+                        <Text size="sm">{t("Score")}</Text>
                         <Text>{user.score}</Text>
                       </Stack>
                       <Stack>
@@ -248,12 +321,12 @@ const Homepage = () => {
               })}
             </SimpleGrid>
             <Center mt="5rem">
-              <Button onClick={resetScores}>Reset scores</Button>
+              <Button onClick={resetScores}>{t("Reset scores")}</Button>
             </Center>
           </Box>
         ) : (
           <Center mt="2rem">
-            <Text>Er zijn nog geen spelers toegevoegd.</Text>
+            <Text>{t("No players added yet.")}</Text>
           </Center>
         )}
       </Box>
@@ -262,7 +335,8 @@ const Homepage = () => {
       <Modal
         opened={openedModal === "addUser"}
         onClose={() => setOpenedModal(null)}
-        title="Voeg speler toe"
+        title={t("Add player")}
+        centered
       >
         <form
           onSubmit={addUserForm.onSubmit((values) => {
@@ -270,7 +344,6 @@ const Homepage = () => {
               id: nextId,
               name: values.name,
               score: 0,
-              card: getRandomCardKey(),
             };
             setUsers((prev) => [...prev, newUser]);
             setNextId((i) => i + 1);
@@ -280,12 +353,12 @@ const Homepage = () => {
         >
           <TextInput
             withAsterisk
-            label="Naam"
-            placeholder="Voer naam in"
+            label={t("Name")}
+            placeholder={t("Enter name")}
             {...addUserForm.getInputProps("name")}
           />
           <Button mt="2rem" w="100%" type="submit">
-            Toevoegen
+            {t("Add")}
           </Button>
         </form>
       </Modal>
@@ -294,12 +367,16 @@ const Homepage = () => {
       <Modal
         opened={openedModal === "changeScore"}
         onClose={handleCloseChange}
-        title={`Pas score aan voor ${editingUser?.name || ""}`}
+        title={`${t("Change score for")} ${editingUser?.name || ""}`}
       >
         <Center>
           <Stack gap="0">
-            <Text mb="1rem">Huidige score: {oldScore}</Text>
-            <Text mb="1rem">Nieuwe score: {newScorePreview}</Text>
+            <Text mb="1rem">
+              {t("Current score")}: {oldScore}
+            </Text>
+            <Text mb="1rem">
+              {t("New score")}: {newScorePreview}
+            </Text>
           </Stack>
         </Center>
 
@@ -320,8 +397,8 @@ const Homepage = () => {
         </Flex>
 
         <NumberInput
-          label="Of voer een score in"
-          placeholder="Voer score in"
+          label={t("Or enter a score")}
+          placeholder={t("Enter score")}
           value={changeScoreForm.values.score}
           onChange={(val) =>
             changeScoreForm.setFieldValue("score", Number(val) || 0)
@@ -331,19 +408,19 @@ const Homepage = () => {
 
         <Divider size={2} my="1rem" />
         <NumberInput
-          label="Bedrag toevoegen"
-          placeholder="Voer bedrag in"
+          label={t("Amount to add")}
+          placeholder={t("Enter amount")}
           value={addAmount}
           onChange={(val) => setAddAmount(Number(val) || 0)}
           mb="1rem"
         />
         <Button w="100%" variant="outline" onClick={handleApplyAdd}>
-          Voeg toe
+          {t("Add")}
         </Button>
         <Divider size={2} my="1rem" />
         <Flex mt="3rem" justify="space-between">
           <Button w="100%" onClick={handleSaveScore}>
-            Score aanpassen
+            {t("Adjust score")}
           </Button>
         </Flex>
       </Modal>
