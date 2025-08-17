@@ -6,10 +6,14 @@ import styles from "./languageSelect.module.css";
 import { IconWorld } from "@tabler/icons-react";
 import FlagUk from "./_assets/uk.svg?react";
 import FlagBE from "./_assets/belgium.svg?react";
+import { useSelector } from "react-redux";
+import { RootState } from "@global/store/store";
 
 const LanguageSelect = () => {
   const [currentLanguage, setCurrentLanguage] = useState(i18next.language);
   const navigate = useNavigate();
+
+  const { isTablet } = useSelector((state: RootState) => state.ui);
 
   useEffect(() => {
     const handleLanguageChangeEvent = () => {
@@ -28,11 +32,20 @@ const LanguageSelect = () => {
   };
 
   return (
-    <Group>
+    <Group style={{ width: isTablet ? "100%" : undefined }}>
       <Menu shadow="md" width={200}>
         <Menu.Target>
           <Button
-            leftSection={currentLanguage === "nl" ? <FlagBE width={32} /> : <FlagUk width={32} />}
+            style={{
+              width: isTablet ? "100%" : "auto",
+            }}
+            leftSection={
+              currentLanguage === "nl" ? (
+                <FlagBE width={32} />
+              ) : (
+                <FlagUk width={32} />
+              )
+            }
             variant="outline"
           >
             <IconWorld

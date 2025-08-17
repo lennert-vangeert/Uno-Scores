@@ -257,13 +257,23 @@ const Homepage = () => {
           align="center"
           mb="2rem"
         >
-          <Button
-            w={isTablet ? "100%" : "auto"}
-            onClick={() => setOpenedModal("addUser")}
-          >
-            {t("Add player")}
-          </Button>
+          {!isTablet && (
+            <Button
+              w={isTablet ? "100%" : "auto"}
+              onClick={() => setOpenedModal("addUser")}
+            >
+              {t("Add player")}
+            </Button>
+          )}
           <Group>
+            {isTablet && (
+              <Button
+                w={isTablet ? "100%" : "auto"}
+                onClick={() => setOpenedModal("addUser")}
+              >
+                {t("Add player")}
+              </Button>
+            )}
             <LanguageSelect />
             {!wakeSupported ? null : (
               <Button
