@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "validate:types": "tsc --noemit",
     "preview": "vite preview",
-    "emulators": "firebase emulators:start --only auth,firestore --project demo-uno"
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-uno",
+    "deploy:firestore": "firebase deploy --only firestore:rules,firestore:indexes"
   },
   "dependencies": {
     "@letele/playing-cards": "^0.1.0",
