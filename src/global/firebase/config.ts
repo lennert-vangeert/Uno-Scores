@@ -8,7 +8,7 @@ const USE_EMULATORS = IS_DEV;
 // In emulator mode we talk to a "demo-" project, which needs no real credentials.
 // In production the values below come from VITE_FIREBASE_* (see firebase-setup.md).
 // These are the public Firebase web-app config values — they ship to the browser
-// by design; access is gated by firestore.rules, not by keeping them secret.
+// by design; access is gated by firestore.rules, not by keeping them secret. 
 const firebaseConfig: FirebaseOptions = USE_EMULATORS
   ? {
       projectId: "demo-uno",
