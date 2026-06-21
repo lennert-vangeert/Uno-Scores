@@ -81,8 +81,11 @@ export const setPlayers = (id: string, players: Player[]): Promise<void> =>
   updateDoc(gameDoc(id), { players, updatedAt: serverTimestamp() });
 
 /** Delete a game and all of its rounds (Firestore has no cascade). */
-export const deleteGame = async (id: string): Promise<void> => {
-  const rounds = await getDocs(roundsCol(id));
+export const deleteGame = async (id: string, ownerId: string): Promise<void> => {
+  // Filter by ownerId so the rounds list query is authorized by the read rule.
+  const rounds = await getDocs(
+    query(roundsCol(id), where("ownerId", "==", ownerId))
+  );
   await Promise.all(rounds.docs.map((d) => deleteDoc(d.ref)));
   await deleteDoc(gameDoc(id));
 };

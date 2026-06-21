@@ -1,79 +1,95 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "wake";
+
+type WakeLockNavigator = Navigator & {
+  wakeLock?: { request(type: "screen"): Promise<WakeLockSentinel> };
+};
 
 export const wakeSupported =
   typeof navigator !== "undefined" && "wakeLock" in navigator;
 
 /**
- * Keep the screen awake while scoring. Preference persists to localStorage and
- * the sentinel is re-acquired when the tab becomes visible again (the lock is
- * auto-released by the browser on visibility change).
+ * Keep the screen awake while scoring.
+ *
+ * The browser auto-releases a screen wake lock every time the tab is hidden
+ * (app switch, phone lock), so we re-acquire on every `visibilitychange` while
+ * the preference is on — and always re-attach the release listener so this keeps
+ * working across repeated hide/show cycles. Preference persists to localStorage.
+ *
+ * Returns `enabled` (the persisted preference) and `active` (whether a lock is
+ * actually held right now).
  */
 export function useWakeLock() {
-  const [wake, setWake] = useState<boolean>(
-    () => typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY) === "true"
+  const [enabled, setEnabled] = useState<boolean>(
+    () =>
+      typeof window !== "undefined" &&
+      localStorage.getItem(STORAGE_KEY) === "true"
   );
+  const [active, setActive] = useState(false);
   const sentinelRef = useRef<WakeLockSentinel | null>(null);
-  const releaseHandlerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, String(wake));
-  }, [wake]);
+    localStorage.setItem(STORAGE_KEY, String(enabled));
+  }, [enabled]);
 
   useEffect(() => {
     if (!wakeSupported) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wakeLock = (navigator as any).wakeLock;
+    const wakeLock = (navigator as WakeLockNavigator).wakeLock;
+    if (!wakeLock) return;
+
+    let cancelled = false;
 
     const acquire = async () => {
+      // already holding one, or the tab is hidden (request would throw)
+      if (sentinelRef.current || document.visibilityState !== "visible") return;
       try {
-        const sentinel: WakeLockSentinel = await wakeLock.request("screen");
+        const sentinel = await wakeLock.request("screen");
+        if (cancelled) {
+          await sentinel.release().catch(() => {});
+          return;
+        }
         sentinelRef.current = sentinel;
-        const onRelease = () => {
-          if (document.visibilityState === "visible" && wake) acquire();
-        };
-        releaseHandlerRef.current = onRelease;
-        sentinel.addEventListener("release", onRelease);
+        setActive(true);
+        // Fires when the browser auto-releases (tab hidden) — clear so the next
+        // visibilitychange re-acquires a fresh lock.
+        sentinel.addEventListener("release", () => {
+          if (sentinelRef.current === sentinel) {
+            sentinelRef.current = null;
+            setActive(false);
+          }
+        });
       } catch {
-        // wake lock can be rejected (e.g. low battery) — ignore.
+        setActive(false); // rejected, e.g. low battery or not visible
       }
     };
 
     const release = async () => {
       const sentinel = sentinelRef.current;
-      if (!sentinel) return;
-      if (releaseHandlerRef.current) {
-        sentinel.removeEventListener("release", releaseHandlerRef.current);
-        releaseHandlerRef.current = null;
-      }
-      await sentinel.release();
       sentinelRef.current = null;
+      setActive(false);
+      if (sentinel) await sentinel.release().catch(() => {});
     };
 
-    if (wake) acquire();
-    else release();
+    const onVisibility = () => {
+      if (enabled && document.visibilityState === "visible") acquire();
+    };
+
+    if (enabled) {
+      acquire();
+      document.addEventListener("visibilitychange", onVisibility);
+    } else {
+      release();
+    }
 
     return () => {
-      if (sentinelRef.current) release();
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibility);
+      release();
     };
-  }, [wake]);
+  }, [enabled]);
 
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (wake && document.visibilityState === "visible" && !sentinelRef.current) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (navigator as any).wakeLock
-          .request("screen")
-          .then((s: WakeLockSentinel) => {
-            sentinelRef.current = s;
-          })
-          .catch(() => {});
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [wake]);
+  const toggle = useCallback(() => setEnabled((p) => !p), []);
 
-  return { wake, toggle: () => setWake((p) => !p), supported: wakeSupported };
+  return { enabled, active, toggle, supported: wakeSupported };
 }

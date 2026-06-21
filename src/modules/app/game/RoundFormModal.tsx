@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { Button, Group, Modal, NumberInput, Stack, Text } from "@mantine/core";
+import {
+  Box,
+  Button,
+  Divider,
+  Group,
+  Modal,
+  NumberInput,
+  Stack,
+  Text,
+} from "@mantine/core";
 import type { Player } from "@data/games";
 import { createRound, updateRound, type RoundWithId } from "@services/rounds";
 import { useTranslate } from "@global/localization";
@@ -14,6 +23,19 @@ type Props = {
   /** When set, the modal edits this round instead of creating a new one. */
   existing?: RoundWithId | null;
 };
+
+/** Quick-add amounts (UNO card values: action cards 20, wilds 50). */
+const INCREMENTS = [1, 5, 10, 20, 50];
+
+/** Compact styling so increment buttons don't inherit the theme's large buttons. */
+const incButtonStyles = {
+  root: {
+    minHeight: "2.25rem",
+    height: "2.25rem",
+    paddingInline: "0.75rem",
+    fontSize: "1rem",
+  },
+} as const;
 
 /** Form with one points field per player. Lowest score wins the round. */
 export default function RoundFormModal({
@@ -38,6 +60,11 @@ export default function RoundFormModal({
     });
     setValues(initial);
   }, [opened, existing, players]);
+
+  const bump = (id: string, inc: number) =>
+    setValues((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 0) + inc) }));
+  const setVal = (id: string, val: number) =>
+    setValues((prev) => ({ ...prev, [id]: val }));
 
   const handleSave = async () => {
     const results = players.map((p) => ({
@@ -64,22 +91,51 @@ export default function RoundFormModal({
         <Text size="sm" c="dimmed">
           {t("Lowest score wins the round.")}
         </Text>
+
         {players.map((p) => (
-          <NumberInput
-            key={p.id}
-            label={p.name}
-            min={0}
-            value={values[p.id] ?? 0}
-            onChange={(v) =>
-              setValues((prev) => ({ ...prev, [p.id]: Number(v) || 0 }))
-            }
-          />
+          <Box key={p.id}>
+            <Group justify="space-between" align="center" mb="0.5rem" wrap="nowrap">
+              <Text fw={500}>{p.name}</Text>
+              <NumberInput
+                w={120}
+                min={0}
+                value={values[p.id] ?? 0}
+                onChange={(v) => setVal(p.id, Number(v) || 0)}
+              />
+            </Group>
+            <Group gap="0.5rem">
+              {INCREMENTS.map((inc) => (
+                <Button
+                  key={inc}
+                  variant="light"
+                  styles={incButtonStyles}
+                  onClick={() => bump(p.id, inc)}
+                >
+                  +{inc}
+                </Button>
+              ))}
+              <Button
+                variant="subtle"
+                color="gray"
+                styles={incButtonStyles}
+                onClick={() => setVal(p.id, 0)}
+              >
+                {t("Clear")}
+              </Button>
+            </Group>
+            <Divider mt="1rem" />
+          </Box>
         ))}
-        <Group justify="flex-end" mt="md">
+
+        <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>
             {t("Cancel")}
           </Button>
-          <Button loading={saving} onClick={handleSave} disabled={players.length === 0}>
+          <Button
+            loading={saving}
+            onClick={handleSave}
+            disabled={players.length === 0}
+          >
             {existing ? t("Save round") : t("Add round")}
           </Button>
         </Group>

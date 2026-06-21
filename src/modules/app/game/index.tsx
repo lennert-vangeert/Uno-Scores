@@ -73,14 +73,14 @@ export default function GamePage() {
   const [roundToDelete, setRoundToDelete] = useState<RoundWithId | null>(null);
 
   useEffect(() => {
-    if (!gameId) return;
+    if (!gameId || !user) return;
     const u1 = subscribeGame(gameId, setGame);
-    const u2 = subscribeRounds(gameId, setRounds);
+    const u2 = subscribeRounds(gameId, user.uid, setRounds);
     return () => {
       u1();
       u2();
     };
-  }, [gameId]);
+  }, [gameId, user]);
 
   const playerForm = useForm({
     mode: "uncontrolled",

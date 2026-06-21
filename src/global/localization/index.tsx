@@ -7,15 +7,13 @@ import {
   useTranslation,
   Trans,
 } from "react-i18next";
-import LanguageDetector from "i18next-browser-languagedetector";
 import { Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 
 // Import your translation files and assets
 import nl from "./_nl.json";
-import en from "./_en.json";
 
-// Define supported locales and their types
-export type Locale = "nl" | "en";
+// The app is Dutch-only.
+export type Locale = "nl";
 
 export type LocaleInfo = {
   id: Locale;
@@ -25,10 +23,9 @@ export type LocaleInfo = {
 
 export const locales: LocaleInfo[] = [
   { id: "nl", label: "Nederlands", translations: nl },
-  { id: "en", label: "English", translations: en },
 ];
 
-// Set the default locale
+// Set the default (and only) locale
 const defaultLocale: Locale = "nl";
 
 // Type guard for locales
@@ -58,28 +55,22 @@ export const delocalizeURL = (relURL: string) => {
   return rest;
 };
 
-// Initialize i18next
-i18next
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init({
-    detection: {
-      order: ["path", "navigator"],
-    },
-    supportedLngs: locales.map((l) => l.id),
-    resources: locales.reduce((acc, locale) => {
-      acc[locale.id] = { translation: locale.translations };
-      return acc;
-    }, {} as Record<string, { translation: object }>),
-    fallbackLng: defaultLocale,
-    defaultNS: "translation",
-    nsSeparator: false,
-    keySeparator: false,
-    interpolation: {
-      escapeValue: false, // React handles escaping
-    },
-    debug: false,
-  });
+// Initialize i18next — Dutch forced, no language detection.
+i18next.use(initReactI18next).init({
+  lng: defaultLocale,
+  supportedLngs: [defaultLocale],
+  resources: {
+    nl: { translation: nl },
+  },
+  fallbackLng: defaultLocale,
+  defaultNS: "translation",
+  nsSeparator: false,
+  keySeparator: false,
+  interpolation: {
+    escapeValue: false, // React handles escaping
+  },
+  debug: false,
+});
 
 // I18nProvider component that wraps your app with i18next context
 export const I18nProvider = ({ children }: { children: React.ReactNode }) => (

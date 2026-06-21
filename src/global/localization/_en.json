@@ -33,6 +33,7 @@
 
   "Stats": "Stats",
   "Keep screen awake": "Keep screen awake",
+  "Screen stays awake": "Screen stays awake",
 
   "Your games": "Your games",
   "New game": "New game",
@@ -68,6 +69,7 @@
   "Lowest score wins the round.": "Lowest score wins the round.",
   "Save round": "Save round",
   "Add round": "Add round",
+  "Clear": "Clear",
 
   "Most points in one round": "Most points in one round",
   "Games played": "Games played",

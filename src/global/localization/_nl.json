@@ -33,6 +33,7 @@
 
   "Stats": "Statistieken",
   "Keep screen awake": "Scherm wakker houden",
+  "Screen stays awake": "Scherm blijft wakker",
 
   "Your games": "Jouw spellen",
   "New game": "Nieuw spel",
@@ -68,6 +69,7 @@
   "Lowest score wins the round.": "De laagste score wint de ronde.",
   "Save round": "Ronde opslaan",
   "Add round": "Ronde toevoegen",
+  "Clear": "Wissen",
 
   "Most points in one round": "Meeste punten in één ronde",
   "Games played": "Gespeelde spellen",

@@ -72,8 +72,8 @@ export default function GamesListPage() {
   });
 
   const handleDelete = async () => {
-    if (!toDelete) return;
-    await deleteGame(toDelete.id);
+    if (!toDelete || !user) return;
+    await deleteGame(toDelete.id, user.uid);
     setToDelete(null);
   };
 
