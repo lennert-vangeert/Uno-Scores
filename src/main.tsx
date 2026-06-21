@@ -9,6 +9,7 @@ import { MantineProvider } from "@mantine/core";
 import { Provider } from "react-redux";
 import { store } from "@global/store/store";
 import { Notifications } from "@mantine/notifications";
+import { AuthProvider } from "@global/firebase/AuthProvider";
 import "@global/style/mantineTheme/fonts.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -17,7 +18,9 @@ createRoot(document.getElementById("root")!).render(
       <MantineProvider>
         <Provider store={store}>
           <Notifications />
-          <RouterProvider router={router} />
+          <AuthProvider>
+            <RouterProvider router={router} />
+          </AuthProvider>
         </Provider>
       </MantineProvider>
     </MantineStyles>

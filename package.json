@@ -4,11 +4,13 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "./scripts/dev.sh",
+    "vite": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "validate:types": "tsc --noemit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-uno"
   },
   "dependencies": {
     "@letele/playing-cards": "^0.1.0",
@@ -28,6 +30,7 @@
     "axios": "^1.8.4",
     "dayjs": "^1.11.13",
     "embla-carousel": "^8.6.0",
+    "firebase": "^11.0.0",
     "embla-carousel-react": "^8.6.0",
     "i18next": "^24.2.2",
     "i18next-browser-languagedetector": "^8.0.4",
@@ -49,6 +52,7 @@
     "eslint": "^9.19.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.18",
+    "firebase-tools": "^13.0.0",
     "globals": "^15.14.0",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.22.0",

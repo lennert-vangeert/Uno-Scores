@@ -44,6 +44,8 @@ export default defineConfig({
     alias: {
       "@global": path.resolve(__dirname, "src/global"),
       "@common": path.resolve(__dirname, "src/_common"),
+      "@data": path.resolve(__dirname, "src/data"),
+      "@services": path.resolve(__dirname, "src/services"),
       "@public": path.resolve(__dirname, "public"),
       "@assets": path.resolve(__dirname, "src/assets"),
       "@tabler/icons-react": "@tabler/icons-react/dist/esm/icons/index.mjs", // Adjust to fix chunck problem with tabler icons https://github.com/tabler/tabler-icons/issues/1233#issuecomment-2428245119
@@ -61,6 +63,7 @@ export default defineConfig({
             "@mantine/carousel",
             "@mantine/notifications",
           ],
+          firebase: ["firebase/app", "firebase/auth", "firebase/firestore"],
         },
       },
     },

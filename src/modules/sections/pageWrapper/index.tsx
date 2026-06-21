@@ -4,6 +4,8 @@ import { ReactNode, useEffect, useMemo, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 
 import Footer from "../footer";
+import AppHeader from "../appHeader";
+import MigrationGate from "../../app/MigrationGate";
 
 // Redux
 import ScrollToTop from "@common/scrollToTop";
@@ -86,6 +88,9 @@ const PageWrapper = ({ children }: PageWrapperProps) => {
     <>
       <ScrollToTop />
       <AppShell>
+        <AppHeader />
+        {/* One-time prompt to import legacy localStorage scores after first login. */}
+        <MigrationGate />
         <Box mih="80vh">
           {/* Render direct children if provided, otherwise fallback to nested routes */}
           {children ?? <Outlet />}

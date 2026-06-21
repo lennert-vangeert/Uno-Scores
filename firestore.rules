@@ -1,0 +1,81 @@
+rules_version = '2';
+
+// Security rules for the UNO scorekeeper.
+//   users  -> a signed-in user can read any profile; only the owner writes their own.
+//   games  -> owner-only read/write. ownerId == auth uid, ownership can't be transferred.
+//   rounds -> live under games/{gameId}/rounds. A single recursive-wildcard match covers
+//             both the per-game subscription and the collectionGroup("rounds") stats query.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function validUser(d) {
+      return d.displayName is string && d.displayName.size() <= 100
+             && d.email is string;
+    }
+
+    // Mirrors the Game type in src/data/games.ts. Keep in sync when the model changes.
+    function validGame(d) {
+      return d.ownerId is string
+             && d.name is string && d.name.size() >= 1 && d.name.size() <= 100
+             && d.status in ['active', 'finished']
+             && d.players is list
+             && d.createdAt is timestamp
+             && d.updatedAt is timestamp;
+    }
+
+    // Mirrors the Round type in src/data/rounds.ts.
+    function validRound(d) {
+      return d.ownerId is string
+             && d.roundNumber is number
+             && d.results is list
+             && d.createdAt is timestamp
+             && d.updatedAt is timestamp;
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(uid) && validUser(request.resource.data);
+      allow delete: if isOwner(uid);
+    }
+
+    match /games/{gameId} {
+      allow read: if isOwner(resource.data.ownerId);
+
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerId == request.auth.uid
+                    && validGame(request.resource.data);
+
+      // owner-only writes; ownership cannot be transferred via update
+      allow update: if isOwner(resource.data.ownerId)
+                    && request.resource.data.ownerId == resource.data.ownerId
+                    && validGame(request.resource.data);
+
+      allow delete: if isOwner(resource.data.ownerId);
+    }
+
+    // Recursive wildcard so this matches both games/{id}/rounds/{id} (direct path)
+    // and a collectionGroup("rounds") query — both must filter ownerId == uid.
+    match /{path=**}/rounds/{roundId} {
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerId == request.auth.uid
+                    && validRound(request.resource.data);
+
+      allow update: if isSignedIn()
+                    && resource.data.ownerId == request.auth.uid
+                    && request.resource.data.ownerId == resource.data.ownerId
+                    && validRound(request.resource.data);
+
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+  }
+}

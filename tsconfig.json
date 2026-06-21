@@ -9,7 +9,9 @@
     "paths": {
       // Add aliases here and in the vite.config.ts
       "@global/*": ["src/global/*"],
-      "@common/*": ["src/_common/*"]
+      "@common/*": ["src/_common/*"],
+      "@data/*": ["src/data/*"],
+      "@services/*": ["src/services/*"]
     }
   }
 }
